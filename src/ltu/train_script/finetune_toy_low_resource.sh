@@ -1,26 +1,24 @@
 #!/bin/bash
-#SBATCH -J alm
-#SBATCH -o ./log/%j_alm.txt
-#SBATCH --qos=regular
-#SBATCH --gres=gpu:4
+#SBATCH -o ./log/%j_alm.out
+#SBATCH --error ./log/%j_alm.err
+#SBATCH --gres=gpu:1
 #SBATCH --nodes=1
-#SBATCH --partition=a6
+#SBATCH --partition=A40short
 #SBATCH --ntasks-per-node=32
-#SBATCH --mem=470000
-#SBATCH --exclusive
 
+source ${HOME}/.bashrc
 # use model parallel if you have multiple small gpus on a single node, will be slower
 # tune micro_batch_size to be the largest value that does not cause OOM
 
 export TRANSFORMERS_CACHE=./hf_cache/
 export HF_DATASETS_CACHE=./hf_cache/
-output_dir='../exp/ltu_ft_toy_low_resource/'
+output_dir='../exp/ltu_ft_toy_low_resource_full/'
 mkdir -p $output_dir
 cp "$0" ${output_dir}/$(date +"%Y-%m-%d-%H-%M-%S").sh
 
 python ../finetune_low_resource.py \
-    --base_model '../../../pretrained_mdls/ltu_ori_paper.bin' \
-    --data_path '../../../openaqa/data/openaqa_toy_relative.json' \
+    --base_model '/home/s6kogase/seminar/trained/full_ft_2e-5_20000.bin' \
+    --data_path '/home/s6kogase/seminar/ltu/openaqa/data/deepfakes/audio_classification_data.json' \
     --output_dir $output_dir \
     --batch_size 256 \
     --micro_batch_size 1 \

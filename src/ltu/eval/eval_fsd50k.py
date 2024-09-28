@@ -8,6 +8,8 @@
 # evaluation classification based on gpt/bert embeddings
 import os.path
 
+from tqdm import tqdm
+
 import openai
 import numpy as np
 import math
@@ -28,11 +30,11 @@ from tenacity import (
 )  # for exponential backoff
 
 dataset = 'fsd50k'
-llm_task = 'caption'
-text_embed_setting = 'gpt'
+llm_task = 'cla'
+text_embed_setting = 'bert'
 
-base_path = '/data/sls/scratch/yuangong/audiollm/src/llm/alpaca-lora-main/eval_res/'
-eval_file_list = ['fsd_formal_audio_lora_mix_from_proj_fz_no_adapter_checkpoint-22000_caption_0.10_0.95_500_repp110.json']
+base_path = '/home/s6kogase/seminar/ltu/src/ltu/eval_res/'
+eval_file_list = ['fsd_full_ft_2e-5_20000_open_2024_09_21T23_00_07.json']
 eval_file_list = [ base_path + x for x in eval_file_list]
 
 for x in eval_file_list:
@@ -45,7 +47,7 @@ bert_tokenizer = AutoTokenizer.from_pretrained(bert_mdl_size, model_max_length=5
 bert_model = BertModel.from_pretrained(bert_mdl_size).to(device)
 
 for eval_file in eval_file_list:
-    try:
+    if True:
         def get_bert_embedding(input_text):
             input_text = remove_punctuation_and_lowercase(input_text)
             #print(input_text)
@@ -63,7 +65,7 @@ for eval_file in eval_file_list:
             return openai.Embedding.create(**kwargs)
 
         def get_gpt_embedding(input_text, mdl_size='text-embedding-ada-002'):
-            openai.api_key = 'your_open_ai_key'
+            openai.api_key = 'somekey'
             response = embedding_with_backoff(
                 input=input_text,
                 model=mdl_size
@@ -120,28 +122,34 @@ for eval_file in eval_file_list:
                     line_count += 1
             return name_lookup
 
-        label_list = np.loadtxt('/data/sls/scratch/yuangong/audiollm/src/data/prep_data/eval_sets/labels/class_labels_indices_fsd50k.csv', delimiter=',', dtype=str, skiprows=1)
+        label_list = np.loadtxt('/home/s6kogase/seminar/ltu/src/ltu/eval/labels/class_labels_indices_fsd50k.csv', delimiter=',', dtype=str, skiprows=1)
         print(label_list)
 
         # load cached label embedding dict
-        if os.path.exists('/data/sls/scratch/yuangong/audiollm/src/llm/alpaca-lora-main/eval_res/label_embed_dict/{:s}_{:s}.json'.format(dataset, text_embed_setting)):
-            with open('/data/sls/scratch/yuangong/audiollm/src/llm/alpaca-lora-main/eval_res/label_embed_dict/{:s}_{:s}.json'.format(dataset, text_embed_setting), 'r') as f:
+        embedding_path = '{:s}label_embed_dict/{:s}_{:s}.json'.format(base_path, dataset, text_embed_setting)
+        print(embedding_path)
+        if False and os.path.exists(embedding_path):
+            with open(embedding_path, 'r') as f:
                 json_str = f.read()
             label_dict = json.loads(json_str, object_pairs_hook=OrderedDict)
         else:
             label_dict = OrderedDict()
-            for i in range(label_list.shape[0]):
+            bar = tqdm(range(label_list.shape[0]), desc="Get embedding for labels")
+            for i in bar:
                 class_code = label_list[i, 1]
                 class_name = label_list[i, 2].replace('_', ' ')
+                #breakpoint()
                 if text_embed_setting == 'gpt':
                     label_dict[class_name] = get_gpt_embedding('sound of ' + class_name.lower())
                 elif text_embed_setting == 'bert':
                     label_dict[class_name] = get_bert_embedding('sound of ' + class_name.lower())
 
-            with open('/data/sls/scratch/yuangong/audiollm/src/llm/alpaca-lora-main/eval_res/label_embed_dict/{:s}_{:s}.json'.format(dataset, text_embed_setting), 'w') as f:
-                json_str = json.dumps(label_dict)
-                f.write(json_str)
+            #os.mkdir("/".join(embedding_path.split("/")[:-1]))
+            #with open(embedding_path, 'w') as f:
+            #    json_str = json.dumps(label_dict)
+            #    f.write(json_str)
 
+        #breakpoint()
         print(label_dict.keys())
 
         with open(eval_file, 'r') as fp:
@@ -153,8 +161,8 @@ for eval_file in eval_file_list:
         print(eval_data[1]['pred'].split(': ')[-1].split('; '))
         print(eval_data[1]['ref'].split(': ')[-1].split('; '))
 
-        if os.path.exists('/data/sls/scratch/yuangong/audiollm/src/llm/alpaca-lora-main/eval_res/embedding_cache/{:s}_{:s}_{:s}.json'.format( dataset, llm_task, text_embed_setting)) == True:
-            with open('/data/sls/scratch/yuangong/audiollm/src/llm/alpaca-lora-main/eval_res/embedding_cache/{:s}_{:s}_{:s}.json'.format( dataset, llm_task, text_embed_setting), 'r') as f:
+        if os.path.exists('{:s}embedding_cache/{:s}_{:s}_{:s}.json'.format(base_path, dataset, llm_task, text_embed_setting)) == True:
+            with open('{:s}embedding_cache/{:s}_{:s}_{:s}.json'.format(base_path, dataset, llm_task, text_embed_setting), 'r') as f:
                 embed_cache = f.read()
             embed_cache = json.loads(embed_cache)
         else:
@@ -185,7 +193,8 @@ for eval_file in eval_file_list:
         print('number of samples {:d}'.format(num_sample))
         all_pred = np.zeros([num_sample, num_class])
         all_truth = np.zeros([num_sample, num_class])
-        for i in range(num_sample):
+        bar = tqdm(range(num_sample), desc="evaluate audio")
+        for i in bar:
             cur_audio_id = eval_data[i]['audio_id']
             if llm_task == 'cla':
                 cur_pred_list = eval_data[i]['pred'].split(': ')[-1].split('; ')
@@ -201,10 +210,10 @@ for eval_file in eval_file_list:
                 all_truth[i, cur_truth_idx] = 1.0
 
             all_pred[i] = get_pred(cur_pred_list, label_dict)
-            if i % 100 == 0:
-                print('{:d} / {:d} processed'.format(i, num_sample))
+            #if i % 100 == 0:
+            #    print('{:d} / {:d} processed'.format(i, num_sample))
 
-        save_fold = "/data/sls/scratch/yuangong/audiollm/src/llm/alpaca-lora-main/eval_res/{:s}_{:s}_{:s}_cla_report".format('.'.join(eval_file.split('/')[-1].split('.')[:-1]), llm_task, text_embed_setting)
+        save_fold = "{:s}{:s}_{:s}_{:s}_cla_report".format(base_path, '.'.join(eval_file.split('/')[-1].split('.')[:-1]), llm_task, text_embed_setting)
         if os.path.exists(save_fold) == False:
             os.makedirs(save_fold)
 
@@ -219,8 +228,6 @@ for eval_file in eval_file_list:
         np.savetxt(save_fold + '/result_summary.csv', [mAP, mAUC, acc], delimiter=',')
 
         embed_cache = json.dumps(embed_cache)
-        save_cache_path = '/data/sls/scratch/yuangong/audiollm/src/llm/alpaca-lora-main/eval_res/embedding_cache/{:s}_{:s}_{:s}.json'.format(dataset, llm_task, text_embed_setting)
+        save_cache_path = '{:s}embedding_cache/{:s}_{:s}_{:s}.json'.format(base_path, dataset, llm_task, text_embed_setting)
         with open(save_cache_path, 'w') as f:
             f.write(embed_cache)
-    except:
-        pass

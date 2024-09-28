@@ -1,0 +1,10 @@
+[
+    {
+     "instruction": "Closed-ended question: Analyze the audio and determine if it is an audio deepfake.",
+     "input": "",
+     "audio_id": "/home/s6kogase/seminar/data/J_bigvgan/4tnW9atZKo0.flac",
+     "dataset": "deepfakes",
+     "task": "cla_label_des",
+     "output": "It is an audio deepfake, because it shows characteristics of the BigVGAN vocoder."
+    }
+]

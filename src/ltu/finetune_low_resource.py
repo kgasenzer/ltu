@@ -224,6 +224,7 @@ def train(
 
     # now load from real checkpoint
     if start_model != None and (resume_from_checkpoint == None or resume_from_checkpoint == False):
+        print(f"Loading now start model from {start_model}")
         state_dict = torch.load(start_model, map_location='cpu')
         msg = model.load_state_dict(state_dict, strict=False)
         # print('load checkpoint', msg)

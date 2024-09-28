@@ -89,12 +89,12 @@ def train(
     ), "Please specify a --base_model, e.g. --base_model='huggyllama/llama-7b'"
 
     # trick to load checkpoints correctly from HF
-    if '../../../pretrained_mdls/vicuna_ltu/' not in base_model:
+    if '/home/s6kogase/seminar/ltu/pretrained_mdls/vicuna_ltu/' not in base_model:
         # start from a different model with original vicuna
         # temporally first load the original vicuna, then load the actual checkpoint
         start_model = base_model # need to point to a specific bin file that contains state dict.
         # TODO: change to your vicuna_tltr path
-        base_model = '../../../pretrained_mdls/vicuna_ltu/'
+        base_model = '/home/s6kogase/seminar/ltu/pretrained_mdls/vicuna_ltu/'
         print('Will load from {:s} later, for implementation purpose, first load from {:s}'.format(start_model, base_model))
     else:
         start_model = None
@@ -227,6 +227,7 @@ def train(
 
     # now load from real checkpoint
     if start_model != None and (resume_from_checkpoint == None or resume_from_checkpoint == False):
+        print(f"Loading now start model from {start_model}")
         state_dict = torch.load(start_model, map_location='cpu')
         msg = model.load_state_dict(state_dict, strict=False)
         # print('load checkpoint', msg)

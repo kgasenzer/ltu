@@ -1,13 +1,14 @@
 #!/bin/bash
 #SBATCH -J alm
 #SBATCH -o ./log/%j_alm.txt
-#SBATCH --qos=regular
 #SBATCH --gres=gpu:4
 #SBATCH --nodes=1
-#SBATCH --partition=a6
+#SBATCH --partition=A40short
 #SBATCH --ntasks-per-node=32
 #SBATCH --mem=470000
 #SBATCH --exclusive
+
+#conda activate venv_ltu
 
 export TRANSFORMERS_CACHE=./hf_cache/
 export HF_DATASETS_CACHE=./hf_cache/
@@ -16,10 +17,10 @@ mkdir -p $output_dir
 cp "$0" ${output_dir}/$(date +"%Y-%m-%d-%H-%M-%S").sh
 
 torchrun --nproc_per_node=4 --master_port=1234 ../finetune.py \
-    --base_model '../../../pretrained_mdls/ltu_ori_paper.bin' \
-    --data_path '../../../openaqa/data/openaqa_toy_relative.json' \
+    --base_model '/home/s6kogase/seminar/ltu/pretrained_mdls/ltu_ori_paper.bin' \
+    --data_path '/home/s6kogase/seminar/ltu/openaqa/data/deepfakes/audio_classification_data.json' \
     --output_dir $output_dir \
-    --batch_size 256 \
+    --batch_size 128 \
     --micro_batch_size 4 \
     --num_epochs 1 \
     --learning_rate 1e-4 \

@@ -36,7 +36,7 @@ config = LoraConfig(
 model = get_peft_model(model, config)
 
 # change the path to your checkpoint
-state_dict = torch.load('/data/sls/scratch/yuangong/ltu/pretrained_mdls/ltu_ori_paper.bin', map_location='cpu')
+state_dict = torch.load('/home/s6kogase/seminar/ltu/pretrained_mdls/ltu_ori_paper.bin', map_location='cpu')
 msg = model.load_state_dict(state_dict, strict=False)
 
 model.is_parallelizable = True

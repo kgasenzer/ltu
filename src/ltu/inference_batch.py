@@ -1,5 +1,8 @@
+from datetime import datetime
 import sys
 import os
+
+from tqdm import tqdm
 
 default_cuda_devices = "0,1,2,3"
 if len(sys.argv) > 1:
@@ -9,6 +12,7 @@ if len(sys.argv) > 1:
 else:
     argument = default_cuda_devices
 os.environ["CUDA_VISIBLE_DEVICES"] = argument
+timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
 
 import os
 import torchaudio
@@ -73,7 +77,7 @@ def main(
     model = get_peft_model(model, config)
     temp, top_p, top_k = 0.1, 0.95, 500
     # change it to your model path
-    eval_mdl_path = '/data/sls/scratch/yuangong/ltu/pretrained_mdls/ltu_ori_paper.bin'
+    eval_mdl_path = '/home/s6kogase/seminar/ltu/pretrained_mdls/ltu_ori_paper.bin'
     state_dict = torch.load(eval_mdl_path, map_location='cpu')
     msg = model.load_state_dict(state_dict, strict=False)
 
@@ -87,6 +91,7 @@ def main(
 
     model.eval()
     eval_dataset_list = ['esc50', 'audiocaps', 'as', 'vgg', 'clotho', 'fsd', 'vs', 'bj', 'tut', 'dcase', 'open-gpt3', 'open-gpt4']
+    eval_dataset_list = ['fsd']
 
     # all these json file can be downloaded from https://www.dropbox.com/scl/fo/juh1dk9ltvhghuj0l1sag/h?rlkey=0n2cd5kebzh8slwanjzrfn7q6&dl=0
     # you will need to prepare audio by yourself, note please convert all audios to 16khz
@@ -159,7 +164,8 @@ def main(
 
         for task in task_dict.keys():
             result_json = []
-            for i in range(len(data_json_1)):
+            bar = tqdm(range(len(data_json_1)))
+            for i in bar:
                 cur_answer = data_json_1[i]["output"]
                 cur_audio_path = data_json_1[i]["audio_id"]
 
@@ -217,10 +223,10 @@ def main(
                 print('eclipse time: ', end_time-begin_time, ' seconds.')
 
                 result_json.append({'prompt': instruction, 'pred': output[len(prompt):], 'ref': cur_answer, 'audio_id': cur_audio_path})
-                save_name = eval_mdl_path.split('/')[-1].split('.')[0]
+                save_name = f"{eval_mdl_path.split('/')[-1].split('.')[0]}"
                 if os.path.exists('./eval_res') == False:
                     os.mkdir('./eval_res')
-                with open('./eval_res/{:s}_{:s}_{:s}.json'.format(eval_dataset, save_name, task), 'w') as fj:
+                with open('./eval_res/{:s}_{:s}_{:s}_{:s}.json'.format(eval_dataset, save_name, task, timestamp), 'w') as fj:
                     json.dump(result_json, fj, indent=1)
 
 if __name__ == "__main__":
